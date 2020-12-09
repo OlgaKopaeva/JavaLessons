@@ -3,10 +3,6 @@ package Lesson5;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-
-import com.opencsv.exceptions.CsvException;
 
 public class MyOutputClass {
 
@@ -37,7 +33,7 @@ public class MyOutputClass {
         }
     }
 
-    public static void main(String[] args) throws IOException, CsvException {
+    public static void main(String[] args) throws IOException {
         File file = new File("./file.csv");
         file.createNewFile();
 
