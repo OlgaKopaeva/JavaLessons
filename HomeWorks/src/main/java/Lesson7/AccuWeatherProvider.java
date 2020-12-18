@@ -1,5 +1,6 @@
 package Lesson7;
 
+import Lesson7.entity.WeatherData;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +11,7 @@ import okhttp3.Response;
 import Lesson7.enums.Periods;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -28,19 +30,35 @@ public class AccuWeatherProvider implements WeatherProvider {
     public String countryName;
 
     @Override
-    public void getWeather(Periods periods) throws IOException {
+    public void getWeather(Periods periods) throws IOException, SQLException {
         String cityKey = detectCityKey();
 
         if (periods.equals(Periods.NOW)) {
             List<WeatherResponse> weatherResponse = getCurrentWeather(cityKey);
+            writeToBD(weatherResponse);
+
             printCurrentWeather(weatherResponse);
         } else if (periods.equals(Periods.FIVE_DAYS)) {
             List<WeatherResponse> weatherResponse = get5daysWeather(cityKey);
+            writeToBD(weatherResponse);
             printForecast5Days(weatherResponse);
 
         } else {
             System.out.println("Вывод прогноза на другой период времени пока недоступен.");
         }
+    }
+
+    private void writeToBD(List<WeatherResponse> weatherResponse) throws SQLException {
+        DatabaseRepositorySQLiteImpl databaseRepositorySQLite = new DatabaseRepositorySQLiteImpl();
+        for (WeatherResponse forecast1Day : weatherResponse) {
+            WeatherData weatherData = new WeatherData(cityName, forecast1Day.date, forecast1Day.getWeatherText(), forecast1Day.temperature.metric.getValue());
+            databaseRepositorySQLite.saveWeatherData(weatherData);
+        }
+    }
+
+    @Override
+    public WeatherData getAllFromDb() throws IOException {
+        return null;
     }
 
     public void printCurrentWeather(List<WeatherResponse> weatherResponse) {
@@ -55,7 +73,6 @@ public class AccuWeatherProvider implements WeatherProvider {
                     + forecast1Day.getWeatherText() + ",  температура: " + (forecast1Day.temperature.metric.getValue() - 32) + ".");
         }
     }
-
 
     public List<WeatherResponse> getCurrentWeather(String cityKey) throws IOException {
         HttpUrl url = new HttpUrl.Builder()
