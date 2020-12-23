@@ -1,7 +1,6 @@
 package Lesson7;
 
 import Lesson7.entity.WeatherData;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.HttpUrl;
@@ -35,9 +34,11 @@ public class AccuWeatherProvider implements WeatherProvider {
 
         if (periods.equals(Periods.NOW)) {
             List<WeatherResponse> weatherResponse = getCurrentWeather(cityKey);
-            writeToBD(weatherResponse);
 
             printCurrentWeather(weatherResponse);
+            writeToBD(weatherResponse);
+
+
         } else if (periods.equals(Periods.FIVE_DAYS)) {
             List<WeatherResponse> weatherResponse = get5daysWeather(cityKey);
             writeToBD(weatherResponse);
@@ -57,11 +58,13 @@ public class AccuWeatherProvider implements WeatherProvider {
     }
 
     @Override
-    public WeatherData getAllFromDb() throws IOException {
-        return null;
+    public void getAllFromDb() throws IOException, SQLException {
+        DatabaseRepositorySQLiteImpl databaseRepositorySQLite = new DatabaseRepositorySQLiteImpl();
+        databaseRepositorySQLite.getAllSavedData();
     }
 
     public void printCurrentWeather(List<WeatherResponse> weatherResponse) {
+        System.out.println(weatherResponse);
         System.out.println("Погода сейчас в городе " + cityName + " в стране " + countryName + ": " + weatherResponse.get(0).getWeatherText());
         System.out.println("Температура воздуха: " + weatherResponse.get(0).temperature.metric.getValue() + " градусов цельсия.");
         System.out.println();
@@ -75,6 +78,7 @@ public class AccuWeatherProvider implements WeatherProvider {
     }
 
     public List<WeatherResponse> getCurrentWeather(String cityKey) throws IOException {
+        List<WeatherResponse> result = new ArrayList<>();
         HttpUrl url = new HttpUrl.Builder()
                 .scheme("http")
                 .host(BASE_HOST)
@@ -90,9 +94,27 @@ public class AccuWeatherProvider implements WeatherProvider {
                 .build();
 
         Response response = client.newCall(request).execute();
-        List<WeatherResponse> weatherResponse = objectMapper.readValue(response.body().string(), new TypeReference<List<WeatherResponse>>() {
-        });
-        return weatherResponse;
+        String jsonResponse = response.body().string();
+        System.out.println(jsonResponse);
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        JsonNode dailyForecasts = objectMapper.readTree(jsonResponse);
+        for (JsonNode dailyForecast : dailyForecasts) {
+            JsonNode weatherText = null;
+            JsonNode temperature = null;
+            String date = response.header("Date");
+            System.out.println(date);
+            if (dailyForecast.has("WeatherText")) {
+                weatherText = dailyForecast.get("WeatherText");
+            }
+            if (dailyForecast.has("Temperature")) {
+                temperature = dailyForecast.get("Temperature").get("Metric").get("Value");
+            }
+            WeatherResponse r = new WeatherResponse(date, weatherText.asText(), temperature.doubleValue());
+            result.add(r);
+        }
+
+        return result;
     }
 
     public List<WeatherResponse> get5daysWeather(String cityKey) throws IOException {
@@ -131,12 +153,12 @@ public class AccuWeatherProvider implements WeatherProvider {
             JsonNode temperature = null;
             date = dailyForecast.get("Date");
 
-            //      if (dailyForecast.has("Day")) {
+                  if (dailyForecast.has("Day")) {
             weatherText = dailyForecast.get("Day").get("IconPhrase");
 
-       /*     } else {
+           } else {
                 weatherText = dailyForecast.get("Night").get("IconPhrase");
-            }*/
+            }
             if (dailyForecast.has("Temperature")) {
                 temperature = dailyForecast.get("Temperature").get("Minimum").get("Value");
             }
