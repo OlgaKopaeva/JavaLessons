@@ -10,7 +10,7 @@ import java.util.Date;
 public class WeatherResponse {
     private String weatherText;
 
-    public WeatherResponse() {
+    public WeatherResponse(){
         super();
     }
     public WeatherResponse(String date, String weatherText, double temperature) {
